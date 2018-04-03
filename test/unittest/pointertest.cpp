@@ -74,6 +74,17 @@ TEST(Pointer, Parse) {
     }
     #endif
 
+#if RAPIDJSON_HAS_STDSTRINGVIEW
+{
+    Pointer p(std::string_view("/foo"));
+    EXPECT_TRUE(p.IsValid());
+    EXPECT_EQ(1u, p.GetTokenCount());
+    EXPECT_EQ(3u, p.GetTokens()[0].length);
+    EXPECT_STREQ("foo", p.GetTokens()[0].name);
+    EXPECT_EQ(kPointerInvalidIndex, p.GetTokens()[0].index);
+}
+#endif
+
     {
         Pointer p("/foo/0");
         EXPECT_TRUE(p.IsValid());
@@ -557,6 +568,14 @@ TEST(Pointer, Append) {
         EXPECT_TRUE(Pointer("/foo") == q);
     }
 #endif
+
+#if RAPIDJSON_HAS_STDSTRINGVIEW
+    {
+        Pointer p;
+        Pointer q = p.Append(std::string_view("foo"));
+        EXPECT_TRUE(Pointer("/foo") == q);
+    }
+#endif
 }
 
 TEST(Pointer, Equality) {
@@ -694,6 +713,10 @@ TEST(Pointer, GetWithDefault) {
 #if RAPIDJSON_HAS_STDSTRING
     EXPECT_STREQ("C++", Pointer("/foo/C++").GetWithDefault(d, std::string("C++"), a).GetString());
 #endif
+
+#if RAPIDJSON_HAS_STDSTRINGVIEW
+    EXPECT_STREQ("C++", Pointer("/foo/C++").GetWithDefault(d, std::string_view("C++"), a).GetString());
+#endif
 }
 
 TEST(Pointer, GetWithDefault_NoAllocator) {
@@ -745,6 +768,10 @@ TEST(Pointer, GetWithDefault_NoAllocator) {
 
 #if RAPIDJSON_HAS_STDSTRING
     EXPECT_STREQ("C++", Pointer("/foo/C++").GetWithDefault(d, std::string("C++")).GetString());
+#endif
+
+#if RAPIDJSON_HAS_STDSTRINGVIEW
+    EXPECT_STREQ("C++", Pointer("/foo/C++").GetWithDefault(d, std::string_view("C++")).GetString());
 #endif
 }
 
@@ -806,6 +833,11 @@ TEST(Pointer, Set) {
     Pointer("/foo/c++").Set(d, std::string("C++"), a);
     EXPECT_STREQ("C++", GetValueByPointer(d, "/foo/c++")->GetString());
 #endif
+
+#if RAPIDJSON_HAS_STDSTRINGVIEW
+    Pointer("/foo/c++").Set(d, std::string_view("C++"), a);
+    EXPECT_STREQ("C++", GetValueByPointer(d, "/foo/c++")->GetString());
+#endif
 }
 
 TEST(Pointer, Set_NoAllocator) {
@@ -863,6 +895,11 @@ TEST(Pointer, Set_NoAllocator) {
 
 #if RAPIDJSON_HAS_STDSTRING
     Pointer("/foo/c++").Set(d, std::string("C++"));
+    EXPECT_STREQ("C++", GetValueByPointer(d, "/foo/c++")->GetString());
+#endif
+
+#if RAPIDJSON_HAS_STDSTRINGVIEW
+    Pointer("/foo/c++").Set(d, std::string_view("C++"));
     EXPECT_STREQ("C++", GetValueByPointer(d, "/foo/c++")->GetString());
 #endif
 }
@@ -1034,6 +1071,10 @@ TEST(Pointer, GetValueByPointerWithDefault_Pointer) {
 #if RAPIDJSON_HAS_STDSTRING
     EXPECT_STREQ("C++", GetValueByPointerWithDefault(d, Pointer("/foo/C++"), std::string("C++"), a).GetString());
 #endif
+
+#if RAPIDJSON_HAS_STDSTRINGVIEW
+    EXPECT_STREQ("C++", GetValueByPointerWithDefault(d, Pointer("/foo/C++"), std::string_view("C++"), a).GetString());
+#endif
 }
 
 TEST(Pointer, GetValueByPointerWithDefault_String) {
@@ -1087,6 +1128,9 @@ TEST(Pointer, GetValueByPointerWithDefault_String) {
 #if RAPIDJSON_HAS_STDSTRING
     EXPECT_STREQ("C++", GetValueByPointerWithDefault(d, "/foo/C++", std::string("C++"), a).GetString());
 #endif
+#if RAPIDJSON_HAS_STDSTRINGVIEW
+    EXPECT_STREQ("C++", GetValueByPointerWithDefault(d, "/foo/C++", std::string_view("C++"), a).GetString());
+#endif
 }
 
 TEST(Pointer, GetValueByPointerWithDefault_Pointer_NoAllocator) {
@@ -1139,6 +1183,10 @@ TEST(Pointer, GetValueByPointerWithDefault_Pointer_NoAllocator) {
 #if RAPIDJSON_HAS_STDSTRING
     EXPECT_STREQ("C++", GetValueByPointerWithDefault(d, Pointer("/foo/C++"), std::string("C++")).GetString());
 #endif
+
+#if RAPIDJSON_HAS_STDSTRINGVIEW
+    EXPECT_STREQ("C++", GetValueByPointerWithDefault(d, Pointer("/foo/C++"), std::string_view("C++")).GetString());
+#endif
 }
 
 TEST(Pointer, GetValueByPointerWithDefault_String_NoAllocator) {
@@ -1190,6 +1238,10 @@ TEST(Pointer, GetValueByPointerWithDefault_String_NoAllocator) {
 
 #if RAPIDJSON_HAS_STDSTRING
     EXPECT_STREQ("C++", GetValueByPointerWithDefault(d, Pointer("/foo/C++"), std::string("C++")).GetString());
+#endif
+
+#if RAPIDJSON_HAS_STDSTRINGVIEW
+    EXPECT_STREQ("C++", GetValueByPointerWithDefault(d, Pointer("/foo/C++"), std::string_view("C++")).GetString());
 #endif
 }
 
@@ -1246,6 +1298,11 @@ TEST(Pointer, SetValueByPointer_Pointer) {
 
 #if RAPIDJSON_HAS_STDSTRING
     SetValueByPointer(d, Pointer("/foo/c++"), std::string("C++"), a);
+    EXPECT_STREQ("C++", GetValueByPointer(d, "/foo/c++")->GetString());
+#endif
+
+#if RAPIDJSON_HAS_STDSTRINGVIEW
+    SetValueByPointer(d, Pointer("/foo/c++"), std::string_view("C++"), a);
     EXPECT_STREQ("C++", GetValueByPointer(d, "/foo/c++")->GetString());
 #endif
 }
@@ -1305,6 +1362,11 @@ TEST(Pointer, SetValueByPointer_String) {
     SetValueByPointer(d, "/foo/c++", std::string("C++"), a);
     EXPECT_STREQ("C++", GetValueByPointer(d, "/foo/c++")->GetString());
 #endif
+
+#if RAPIDJSON_HAS_STDSTRINGVIEW
+    SetValueByPointer(d, "/foo/c++", std::string_view("C++"), a);
+    EXPECT_STREQ("C++", GetValueByPointer(d, "/foo/c++")->GetString());
+#endif
 }
 
 TEST(Pointer, SetValueByPointer_Pointer_NoAllocator) {
@@ -1361,6 +1423,11 @@ TEST(Pointer, SetValueByPointer_Pointer_NoAllocator) {
     SetValueByPointer(d, Pointer("/foo/c++"), std::string("C++"));
     EXPECT_STREQ("C++", GetValueByPointer(d, "/foo/c++")->GetString());
 #endif
+
+#if RAPIDJSON_HAS_STDSTRINGVIEW
+    SetValueByPointer(d, Pointer("/foo/c++"), std::string_view("C++"));
+    EXPECT_STREQ("C++", GetValueByPointer(d, "/foo/c++")->GetString());
+#endif
 }
 
 TEST(Pointer, SetValueByPointer_String_NoAllocator) {
@@ -1415,6 +1482,11 @@ TEST(Pointer, SetValueByPointer_String_NoAllocator) {
 
 #if RAPIDJSON_HAS_STDSTRING
     SetValueByPointer(d, "/foo/c++", std::string("C++"));
+    EXPECT_STREQ("C++", GetValueByPointer(d, "/foo/c++")->GetString());
+#endif
+
+#if RAPIDJSON_HAS_STDSTRINGVIEW
+    SetValueByPointer(d, "/foo/c++", std::string_view("C++"));
     EXPECT_STREQ("C++", GetValueByPointer(d, "/foo/c++")->GetString());
 #endif
 }

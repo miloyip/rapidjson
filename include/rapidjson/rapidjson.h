@@ -149,6 +149,9 @@
 #include <string>
 #endif // RAPIDJSON_HAS_STDSTRING
 
+#if RAPIDJSON_HAS_STDSTRINGVIEW
+#include <string_view>
+#endif
 ///////////////////////////////////////////////////////////////////////////////
 // RAPIDJSON_NO_INT64DEFINE
 
