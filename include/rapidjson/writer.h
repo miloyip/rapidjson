@@ -212,6 +212,12 @@ public:
     }
 #endif
 
+#if RAPIDJSON_HAS_STDSTRINGVIEW
+    bool String(std::basic_string_view<Ch> str) {
+        return String(str.data(), SizeType(str.size()));
+    }
+#endif
+
     bool StartObject() {
         Prefix(kObjectType);
         new (level_stack_.template Push<Level>()) Level(false);
@@ -222,6 +228,13 @@ public:
 
 #if RAPIDJSON_HAS_STDSTRING
     bool Key(const std::basic_string<Ch>& str)
+    {
+      return Key(str.data(), SizeType(str.size()));
+    }
+#endif
+
+#if RAPIDJSON_HAS_STDSTRINGVIEW
+    bool Key(std::basic_string_view<Ch> str)
     {
       return Key(str.data(), SizeType(str.size()));
     }

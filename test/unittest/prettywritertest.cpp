@@ -123,6 +123,17 @@ TEST(PrettyWriter, String_STDSTRING) {
 }
 #endif
 
+#if RAPIDJSON_HAS_STDSTRINGVIEW
+TEST(PrettyWriter, String_STDSTRING) {
+    StringBuffer buffer;
+    PrettyWriter<StringBuffer> writer(buffer);
+    EXPECT_TRUE(writer.StartArray());
+    EXPECT_TRUE(writer.String(std::string_view("Hello\n")));
+    EXPECT_TRUE(writer.EndArray());
+    EXPECT_STREQ("[\n    \"Hello\\n\"\n]", buffer.GetString());
+}
+#endif
+
 #include <sstream>
 
 class OStreamWrapper {

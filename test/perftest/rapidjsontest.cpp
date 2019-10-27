@@ -240,6 +240,17 @@ TEST_F(RapidJson, SIMD_SUFFIX(DocumentParseStdString_MemoryPoolAllocator)) {
 }
 #endif
 
+#if RAPIDJSON_HAS_STDSTRINGVIEW
+TEST_F(RapidJson, SIMD_SUFFIX(DocumentParseStdString_MemoryPoolAllocator)) {
+    const std::string_view s(json_, length_);
+    for (size_t i = 0; i < kTrialCount; i++) {
+        Document doc;
+        doc.Parse(s);
+        ASSERT_TRUE(doc.IsObject());
+    }
+}
+#endif
+
 TEST_F(RapidJson, SIMD_SUFFIX(DocumentParseIterative_MemoryPoolAllocator)) {
     for (size_t i = 0; i < kTrialCount; i++) {
         Document doc;

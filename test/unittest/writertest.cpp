@@ -98,6 +98,15 @@ TEST(Writer, String) {
         EXPECT_STREQ("\"Hello\\n\"", buffer.GetString());
     }
 #endif
+
+#if RAPIDJSON_HAS_STDSTRINGVIEW
+    {
+        StringBuffer buffer;
+        Writer<StringBuffer> writer(buffer);
+        writer.String(std::string_view("Hello\n"));
+        EXPECT_STREQ("\"Hello\\n\"", buffer.GetString());
+    }
+#endif
 }
 
 TEST(Writer, Issue_889) {

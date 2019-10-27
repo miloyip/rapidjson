@@ -876,6 +876,56 @@ TEST(Value, String) {
         EXPECT_EQ(std::string("Orange"), vs0.Get<std::string>());
     }
 #endif // RAPIDJSON_HAS_STDSTRING
+
+#if RAPIDJSON_HAS_STDSTRINGVIEW
+    {
+        std::string str = "Hello World";
+        str[5] = '\0';
+
+        std::string_view str_view = str;
+
+        EXPECT_STREQ(str_view.data(),"Hello"); // embedded '\0'
+        EXPECT_EQ(str_view.size(), 11u);
+
+        // no copy
+        Value vs0(StringRef(str_view));
+        EXPECT_TRUE(vs0.IsString());
+        EXPECT_EQ(vs0.GetString(), str_view.data());
+        EXPECT_EQ(vs0.GetStringLength(), str_view.size());
+        TestEqual(vs0, str_view);
+
+        // do copy
+        Value vs1(str_view, allocator);
+        EXPECT_TRUE(vs1.IsString());
+        EXPECT_NE(vs1.GetString(), str_view.data());
+        EXPECT_NE(vs1.GetString(), str_view); // not equal due to embedded '\0'
+        EXPECT_EQ(vs1.GetStringLength(), str_view.size());
+        TestEqual(vs1, str_view);
+
+        // SetString
+        str = "World";
+        str_view = str;
+        vs0.SetNull().SetString(str_view, allocator);
+        EXPECT_TRUE(vs0.IsString());
+        EXPECT_STREQ(vs0.GetString(), str_view.c_str());
+        EXPECT_EQ(vs0.GetStringLength(), str_view.size());
+        TestEqual(str_view, vs0);
+        TestUnequal(str_view, vs1);
+
+        // vs1 = str; // should not compile
+        vs1 = StringRef(str_view);
+        TestEqual(str_view, vs1);
+        TestEqual(vs0, vs1);
+
+        // Templated function.
+        EXPECT_TRUE(vs0.Is<std::string_view>());
+        EXPECT_EQ(str_view, vs0.Get<std::string_view>());
+        vs0.Set<std::string_view>(std::string_view("Apple"), allocator);
+        EXPECT_EQ(std::string_view("Apple"), vs0.Get<std::string_view>());
+        vs0.Set(std::string_view("Orange"), allocator);
+        EXPECT_EQ(std::string_view("Orange"), vs0.Get<std::string_view>());
+    }
+#endif // RAPIDJSON_HAS_STDSTRINGVIEW
 }
 
 // Issue 226: Value of string type should not point to NULL
@@ -1273,6 +1323,19 @@ static void TestObject(T& x, Allocator& allocator) {
     }
 #endif
 
+#if RAPIDJSON_HAS_STDSTRINGVIEW
+    {
+        // AddMember(StringRefType, const std::string&, Allocator)
+        Value o(kObjectType);
+        o.AddMember("b", std::string_view("Banana"), allocator);
+        EXPECT_STREQ("Banana", o["b"].GetString());
+
+        // RemoveMember(const std::string&)
+        o.RemoveMember(std::string_view("b"));
+        EXPECT_TRUE(o.ObjectEmpty());
+    }
+#endif
+
 #if RAPIDJSON_HAS_CXX11_RVALUE_REFS
     // AddMember(GenericValue&&, ...) variants
     {
@@ -1306,6 +1369,10 @@ static void TestObject(T& x, Allocator& allocator) {
     EXPECT_TRUE(x.HasMember(std::string("A")));
 #endif
 
+#if RAPIDJSON_HAS_STDSTRINGVIEW
+    EXPECT_TRUE(x.HasMember(std::string_view("A")));
+#endif
+
     name.SetString("C\0D");
     EXPECT_TRUE(x.HasMember(name));
     EXPECT_TRUE(y.HasMember(name));
@@ -1332,6 +1399,11 @@ static void TestObject(T& x, Allocator& allocator) {
 #if RAPIDJSON_HAS_STDSTRING
     EXPECT_STREQ("Apple", x["A"].GetString());
     EXPECT_STREQ("Apple", y[std::string("A")].GetString());
+#endif
+
+#if RAPIDJSON_HAS_STDSTRINGVIEW
+    EXPECT_STREQ("Apple", x["A"].GetString());
+    EXPECT_STREQ("Apple", y[std::string_view("A")].GetString());
 #endif
 
     // member iterator
