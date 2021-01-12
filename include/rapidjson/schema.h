@@ -441,10 +441,13 @@ public:
         maxLength_(~SizeType(0)),
         exclusiveMinimum_(false),
         exclusiveMaximum_(false),
-        defaultValueLength_(0)
+        defaultValueLength_(0),
+        clearOnExit_(true)
     {
         typedef typename ValueType::ConstValueIterator ConstValueIterator;
         typedef typename ValueType::ConstMemberIterator ConstMemberIterator;
+
+        ClearOnExit scope(*this);
 
         if (!value.IsObject())
             return;
@@ -640,28 +643,11 @@ public:
         if (const ValueType* v = GetMember(value, GetDefaultValueString()))
             if (v->IsString())
                 defaultValueLength_ = v->GetStringLength();
-
+        clearOnExit_ = false;
     }
 
     ~Schema() {
-        AllocatorType::Free(enum_);
-        if (properties_) {
-            for (SizeType i = 0; i < propertyCount_; i++)
-                properties_[i].~Property();
-            AllocatorType::Free(properties_);
-        }
-        if (patternProperties_) {
-            for (SizeType i = 0; i < patternPropertyCount_; i++)
-                patternProperties_[i].~PatternProperty();
-            AllocatorType::Free(patternProperties_);
-        }
-        AllocatorType::Free(itemsTuple_);
-#if RAPIDJSON_SCHEMA_HAS_REGEX
-        if (pattern_) {
-            pattern_->~RegexType();
-            AllocatorType::Free(pattern_);
-        }
-#endif
+        Clear();
     }
 
     const SValue& GetURI() const {
@@ -1077,6 +1063,15 @@ private:
         typedef char RegexType;
 #endif
 
+    struct ClearOnExit {
+        explicit ClearOnExit(Schema& s) : s_(s) {}
+        ~ClearOnExit() { if (s_.clearOnExit_) s_.Clear(); }
+    private:
+        ClearOnExit(const ClearOnExit&);
+        ClearOnExit& operator=(const ClearOnExit&);
+        Schema& s_;
+    };
+
     struct SchemaArray {
         SchemaArray() : schemas(), count() {}
         ~SchemaArray() { AllocatorType::Free(schemas); }
@@ -1084,6 +1079,28 @@ private:
         SizeType begin; // begin index of context.validators
         SizeType count;
     };
+
+    void Clear()
+    {
+        AllocatorType::Free(enum_);
+        if (properties_) {
+            for (SizeType i = 0; i < propertyCount_; i++)
+                properties_[i].~Property();
+            AllocatorType::Free(properties_);
+        }
+        if (patternProperties_) {
+            for (SizeType i = 0; i < patternPropertyCount_; i++)
+                patternProperties_[i].~PatternProperty();
+            AllocatorType::Free(patternProperties_);
+        }
+        AllocatorType::Free(itemsTuple_);
+#if RAPIDJSON_SCHEMA_HAS_REGEX
+        if (pattern_) {
+            pattern_->~RegexType();
+            AllocatorType::Free(pattern_);
+        }
+#endif
+    }
 
     template <typename V1, typename V2>
     void AddUniqueElement(V1& a, const V2& v) {
@@ -1439,6 +1456,8 @@ private:
     bool exclusiveMaximum_;
     
     SizeType defaultValueLength_;
+
+    bool clearOnExit_;
 };
 
 template<typename Stack, typename Ch>
@@ -1530,8 +1549,12 @@ public:
         root_(),
         typeless_(),
         schemaMap_(allocator, kInitialSchemaMapSize),
-        schemaRef_(allocator, kInitialSchemaRefSize)
+        schemaRef_(allocator, kInitialSchemaRefSize),
+        clearOnExit_(true)
+
     {
+        ClearOnExit scope(*this);
+
         if (!allocator_)
             ownAllocator_ = allocator_ = RAPIDJSON_NEW(Allocator)();
 
@@ -1566,6 +1589,7 @@ public:
         RAPIDJSON_ASSERT(root_ != 0);
 
         schemaRef_.ShrinkToFit(); // Deallocate all memory for ref
+        clearOnExit_ = false;
     }
 
 #if RAPIDJSON_HAS_CXX11_RVALUE_REFS
@@ -1589,15 +1613,7 @@ public:
 
     //! Destructor
     ~GenericSchemaDocument() {
-        while (!schemaMap_.Empty())
-            schemaMap_.template Pop<SchemaEntry>(1)->~SchemaEntry();
-
-        if (typeless_) {
-            typeless_->~SchemaType();
-            Allocator::Free(typeless_);
-        }
-
-        RAPIDJSON_DELETE(ownAllocator_);
+        Clear();
     }
 
     const URIType& GetURI() const { return uri_; }
@@ -1610,6 +1626,29 @@ private:
     GenericSchemaDocument(const GenericSchemaDocument&);
     //! Prohibit assignment
     GenericSchemaDocument& operator=(const GenericSchemaDocument&);
+
+    // clear on any exit from constructor, e.g. due to exception
+    struct ClearOnExit {
+        explicit ClearOnExit(GenericSchemaDocument& d) : d_(d) {}
+        ~ClearOnExit() { if (d_.clearOnExit_) d_.Clear(); }
+    private:
+        ClearOnExit(const ClearOnExit&);
+        ClearOnExit& operator=(const ClearOnExit&);
+        GenericSchemaDocument& d_;
+    };
+
+    void Clear()
+    {
+        while (!schemaMap_.Empty())
+            schemaMap_.template Pop<SchemaEntry>(1)->~SchemaEntry();
+
+        if (typeless_) {
+            typeless_->~SchemaType();
+            Allocator::Free(typeless_);
+        }
+
+        RAPIDJSON_DELETE(ownAllocator_);
+    }
 
     struct SchemaRefEntry {
         SchemaRefEntry(const PointerType& s, const PointerType& t, const SchemaType** outSchema, Allocator *allocator) : source(s, allocator), target(t, allocator), schema(outSchema) {}
@@ -1652,7 +1691,16 @@ private:
         RAPIDJSON_ASSERT(pointer.IsValid());
         if (v.IsObject()) {
             if (!HandleRefSchema(pointer, schema, v, document)) {
-                SchemaType* s = new (allocator_->Malloc(sizeof(SchemaType))) SchemaType(this, pointer, v, document, allocator_);
+                SchemaType* s = static_cast<SchemaType*>(allocator_->Malloc(sizeof(SchemaType)));
+
+                try {
+                    new (s) SchemaType(this, pointer, v, document, allocator_);
+                }
+                catch (...) {
+                    Allocator::Free(s);
+                    throw;
+                }
+
                 new (schemaMap_.template Push<SchemaEntry>()) SchemaEntry(pointer, s, true, allocator_);
                 if (schema)
                     *schema = s;
@@ -1734,6 +1782,7 @@ private:
     internal::Stack<Allocator> schemaMap_;  // Stores created Pointer -> Schemas
     internal::Stack<Allocator> schemaRef_;  // Stores Pointer from $ref and schema which holds the $ref
     URIType uri_;
+    bool clearOnExit_;
 };
 
 //! GenericSchemaDocument using Value type.
